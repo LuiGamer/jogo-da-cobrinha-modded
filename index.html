@@ -2,34 +2,41 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Jogo da Cobrinha Personalizado</title>
     <style>
         body {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             background: #1a1a1a;
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
             flex-direction: column;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
         #game-container {
             position: relative;
-            width: 400px;
-            height: 400px;
+            width: 90vw;
+            max-width: 400px;
+            aspect-ratio: 1;
+            margin-bottom: 20px;
         }
         canvas {
             border: 4px solid #333;
             background: #0d0d0d;
             border-radius: 8px;
             display: block;
+            width: 100%;
+            height: 100%;
         }
         #menu {
             position: absolute;
-            top: 0; left: 0; width: 400px; height: 400px;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 15, 15, 0.95);
             display: flex;
             flex-direction: column;
@@ -40,10 +47,10 @@
             box-sizing: border-box;
             padding: 20px;
         }
-        h1 { margin: 0 0 10px 0; color: #4CAF50; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
-        .highscore-text { font-size: 16px; color: #aaa; margin-bottom: 20px; }
-        .score-board { font-size: 20px; margin-bottom: 15px; font-weight: bold; color: #fff; }
-        label { margin-bottom: 8px; font-size: 14px; color: #ddd; }
+        h1 { margin: 0 0 10px 0; color: #4CAF50; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; }
+        .highscore-text { font-size: 14px; color: #aaa; margin-bottom: 15px; }
+        .score-board { font-size: 18px; margin-bottom: 10px; font-weight: bold; color: #fff; }
+        label { margin-bottom: 8px; font-size: 13px; color: #ddd; }
         select {
             padding: 10px;
             background: #2a2a2a;
@@ -53,11 +60,11 @@
             font-size: 14px;
             width: 100%;
             max-width: 320px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             cursor: pointer;
             outline: none;
         }
-        button {
+        button.start-btn {
             padding: 12px 30px;
             background: #4CAF50;
             color: white;
@@ -66,10 +73,41 @@
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            transition: background 0.2s;
             box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
         }
-        button:hover { background: #45a049; }
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            width: 180px;
+            height: 180px;
+            margin-top: 10px;
+        }
+        .btn {
+            background: #333;
+            border: 2px solid #555;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+            transform: scale(0.95);
+        }
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 3; }
     </style>
 </head>
 <body>
@@ -97,10 +135,17 @@
                 <option value="google">Google: 🟥🟨🟩🟦🟥🟨🟩🟦🟥🟨</option>
             </select>
 
-            <button onclick="startGame()">JOGAR</button>
+            <button class="start-btn" onclick="startGame()">JOGAR</button>
         </div>
 
         <canvas id="game" width="400" height="400"></canvas>
+    </div>
+
+    <div id="controls">
+        <div class="btn" id="btn-up">▲</div>
+        <div class="btn" id="btn-left">◀</div>
+        <div class="btn" id="btn-right">▶</div>
+        <div class="btn" id="btn-down">▼</div>
     </div>
 
     <script>
@@ -145,7 +190,7 @@
         };
 
         let selectedTheme = 'green';
-        let snake = { x: 160, y: 160, dx: grid, dy: 0, cells: [], maxCells: 4 };
+        let snake = { x: 160, y: 160, dx: grid, dy: 0, cells: Array(), maxCells: 4 };
         let apple = { x: 320, y: 320 };
 
         menuHighscore.textContent = highscore;
@@ -160,7 +205,7 @@
             score = 0;
             snake.x = 160; 
             snake.y = 160;
-            snake.cells = []; 
+            snake.cells = Array(); 
             snake.maxCells = 4;
             snake.dx = grid; 
             snake.dy = 0;
@@ -268,13 +313,33 @@
             }
         }
 
+        function mUp() { if (snake.dy === 0) { snake.dy = -grid; snake.dx = 0; } }
+        function mDown() { if (snake.dy === 0) { snake.dy = grid; snake.dx = 0; } }
+        function mLeft() { if (snake.dx === 0) { snake.dx = -grid; snake.dy = 0; } }
+        function mRight() { if (snake.dx === 0) { snake.dx = grid; snake.dy = 0; } }
+
         document.addEventListener('keydown', function(e) {
             if (!gameActive) return;
-            if (e.keyCode === 37 && snake.dx === 0) { snake.dx = -grid; snake.dy = 0; }
-            else if (e.keyCode === 38 && snake.dy === 0) { snake.dy = -grid; snake.dx = 0; }
-            else if (e.keyCode === 39 && snake.dx === 0) { snake.dx = grid; snake.dy = 0; }
-            else if (e.keyCode === 40 && snake.dy === 0) { snake.dy = grid; snake.dx = 0; }
+            if (e.keyCode === 37) mLeft();
+            else if (e.keyCode === 38) mUp();
+            else if (e.keyCode === 39) mRight();
+            else if (e.keyCode === 40) mDown();
         });
+
+        const bUp = document.getElementById('btn-up');
+        const bDown = document.getElementById('btn-down');
+        const bLeft = document.getElementById('btn-left');
+        const bRight = document.getElementById('btn-right');
+
+        bUp.addEventListener('touchstart', function(e) { e.preventDefault(); mUp(); });
+        bDown.addEventListener('touchstart', function(e) { e.preventDefault(); mDown(); });
+        bLeft.addEventListener('touchstart', function(e) { e.preventDefault(); mLeft(); });
+        bRight.addEventListener('touchstart', function(e) { e.preventDefault(); mRight(); });
+
+        bUp.addEventListener('click', mUp);
+        bDown.addEventListener('click', mDown);
+        bLeft.addEventListener('click', mLeft);
+        bRight.addEventListener('click', mRight);
 
         requestAnimationFrame(loop);
     </script>

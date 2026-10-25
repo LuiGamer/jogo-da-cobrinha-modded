@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Jogo da Cobrinha Personalizado</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #1a1a1a;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            flex-direction: column;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+        canvas {
+            border: 4px solid #333;
+            background: #0d0d0d;
+            border-radius: 8px;
+            display: block;
+        }
+        #menu {
+            position: absolute;
+            top: 0; left: 0; width: 400px; height: 400px;
+            background: rgba(15, 15, 15, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            z-index: 10;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+        h1 { margin: 0 0 10px 0; color: #4CAF50; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
+        .highscore-text { font-size: 16px; color: #aaa; margin-bottom: 20px; }
+        .score-board { font-size: 20px; margin-bottom: 15px; font-weight: bold; color: #fff; }
+        label { margin-bottom: 8px; font-size: 14px; color: #ddd; }
+        select {
+            padding: 10px;
+            background: #2a2a2a;
+            color: white;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            font-size: 14px;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 25px;
+            cursor: pointer;
+            outline: none;
+        }
+        button {
+            padding: 12px 30px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+        }
+        button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+
+    <div class="score-board" id="live-score" style="display:none;">Score: 0 | Recorde: 0</div>
+
+    <div id="game-container">
+        <div id="menu">
+            <h1>Snake Game</h1>
+            <div class="highscore-text">👑 Recorde Atual: <span id="menu-highscore">0</span></div>
+            
+            <label for="color-select">Escolha seu estilo visual:</label>
+            <select id="color-select">
+                <option value="green">Verde: 🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩</option>
+                <option value="red">Vermelho: 🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥</option>
+                <option value="orange">Laranja: 🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧</option>
+                <option value="yellow">Amarelo: 🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨</option>
+                <option value="blue">Azul: 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦</option>
+                <option value="purple">Roxo: 🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪</option>
+                <option value="brown">Marrom: 🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫</option>
+                <option value="black">Preto: ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛</option>
+                <option value="white">Branco: ⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜</option>
+                <option value="rainbow">Rainbow: 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩</option>
+                <option value="bw">Black & White: ⬛⬜⬛⬜⬛⬜⬛⬜⬛⬜</option>
+                <option value="google">Google: 🟥🟨🟩🟦🟥🟨🟩🟦🟥🟨</option>
+            </select>
+
+            <button onclick="startGame()">JOGAR</button>
+        </div>
+
+        <canvas id="game" width="400" height="400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const menu = document.getElementById('menu');
+        const colorSelect = document.getElementById('color-select');
+        const menuHighscore = document.getElementById('menu-highscore');
+        const liveScore = document.getElementById('live-score');
+
+        const grid = 20;
+        let count = 0;
+        let score = 0;
+
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = name + "=" + value + ";expires=" + date.toUTCString() + ";path=/;SameSite=Lax";
+        }
+
+        function getCookie(name) {
+            const prefix = name + "=";
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                let c = cookies[i].trim();
+                if (c.indexOf(prefix) === 0) {
+                    return c.substring(prefix.length, c.length);
+                }
+            }
+            return 0;
+        }
+
+        let highscore = parseInt(getCookie('snake_cookie_highscore')) || 0;
+        let gameActive = false;
+
+        const colorPalette = {
+            green: ['#00e676'], red: ['#ff1744'], orange: ['#ff9100'], yellow: ['#ffea00'],
+            blue: ['#29b6f6'], purple: ['#d500f9'], brown: ['#8d6e63'], black: ['#555555'], white: ['#ffffff'],
+            rainbow: ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#29b6f6', '#d500f9'],
+            bw: ['#333333', '#ffffff'],
+            google: ['#ea4335', '#fbbc05', '#34a853', '#4285f4']
+        };
+
+        let selectedTheme = 'green';
+        let snake = { x: 160, y: 160, dx: grid, dy: 0, cells: [], maxCells: 4 };
+        let apple = { x: 320, y: 320 };
+
+        menuHighscore.textContent = highscore;
+
+        function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min)) + min; }
+
+        function startGame() {
+            selectedTheme = colorSelect.value;
+            menu.style.display = 'none';
+            liveScore.style.display = 'block';
+            
+            score = 0;
+            snake.x = 160; 
+            snake.y = 160;
+            snake.cells = []; 
+            snake.maxCells = 4;
+            snake.dx = grid; 
+            snake.dy = 0;
+            apple.x = getRandomInt(0, 20) * grid; 
+            apple.y = getRandomInt(0, 20) * grid;
+            
+            updateScoreBoard();
+            gameActive = true;
+        }
+
+        function updateScoreBoard() {
+            liveScore.innerHTML = "Score: " + score + " | Recorde: " + highscore;
+        }
+
+        function drawEyes(x, y, dx, dy) {
+            ctx.fillStyle = '#ff003c';
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ff003c';
+
+            let eyeSize = 3;
+            if (dx > 0) {
+                ctx.fillRect(x + 14, y + 4, eyeSize, eyeSize);
+                ctx.fillRect(x + 14, y + 12, eyeSize, eyeSize);
+            } else if (dx < 0) {
+                ctx.fillRect(x + 3, y + 4, eyeSize, eyeSize);
+                ctx.fillRect(x + 3, y + 12, eyeSize, eyeSize);
+            } else if (dy < 0) {
+                ctx.fillRect(x + 4, y + 3, eyeSize, eyeSize);
+                ctx.fillRect(x + 12, y + 3, eyeSize, eyeSize);
+            } else if (dy > 0) {
+                ctx.fillRect(x + 4, y + 14, eyeSize, eyeSize);
+                ctx.fillRect(x + 12, y + 14, eyeSize, eyeSize);
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        function gameOver() {
+            gameActive = false;
+            if (score > highscore) {
+                highscore = score;
+                setCookie('snake_cookie_highscore', highscore, 365);
+            }
+            menuHighscore.textContent = highscore;
+            menu.style.display = 'flex';
+            liveScore.style.display = 'none';
+        }
+
+        function loop() {
+            requestAnimationFrame(loop);
+            if (!gameActive) return;
+
+            if (++count < 9) return;
+            count = 0;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            snake.x += snake.dx; 
+            snake.y += snake.dy;
+
+            if (snake.x < 0) snake.x = canvas.width - grid;
+            else if (snake.x >= canvas.width) snake.x = 0;
+            if (snake.y < 0) snake.y = canvas.height - grid;
+            else if (snake.y >= canvas.height) snake.y = 0;
+
+            snake.cells.unshift({ x: snake.x, y: snake.y });
+            if (snake.cells.length > snake.maxCells) {
+                snake.cells.pop();
+            }
+
+            ctx.fillStyle = '#ff1744';
+            ctx.beginPath();
+            ctx.arc(apple.x + grid/2, apple.y + grid/2, grid/2 - 2, 0, 2 * Math.PI);
+            ctx.fill();
+
+            const palette = colorPalette[selectedTheme];
+            
+            for (let index = 0; index < snake.cells.length; index++) {
+                let cell = snake.cells[index];
+                let colorIndex = index % palette.length;
+                ctx.fillStyle = palette[colorIndex];
+                
+                ctx.fillRect(cell.x, cell.y, grid - 1, grid - 1);
+
+                if (index === 0) {
+                    drawEyes(cell.x, cell.y, snake.dx, snake.dy);
+                }
+
+                if (cell.x === apple.x && cell.y === apple.y) {
+                    snake.maxCells = snake.maxCells + 1; 
+                    score = score + 1; 
+                    if (score > highscore) {
+                        highscore = score;
+                        setCookie('snake_cookie_highscore', highscore, 365);
+                    }
+                    updateScoreBoard();
+                    apple.x = getRandomInt(0, 20) * grid; 
+                    apple.y = getRandomInt(0, 20) * grid;
+                }
+
+                for (let i = index + 1; i < snake.cells.length; i++) {
+                    if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
+                        gameOver();
+                    }
+                }
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (!gameActive) return;
+            if (e.keyCode === 37 && snake.dx === 0) { snake.dx = -grid; snake.dy = 0; }
+            else if (e.keyCode === 38 && snake.dy === 0) { snake.dy = -grid; snake.dx = 0; }
+            else if (e.keyCode === 39 && snake.dx === 0) { snake.dx = grid; snake.dy = 0; }
+            else if (e.keyCode === 40 && snake.dy === 0) { snake.dy = grid; snake.dx = 0; }
+        });
+
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
